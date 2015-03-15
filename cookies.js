@@ -12,8 +12,11 @@ var PLUGIN_INFO = xml`
 
 === Cookie manager ===
 
-:cookie delete {host}:
-    delete cookies for host
+:cookie delete {host} {cookie name}:
+    delete a cookie
+
+:cookie delete-all {host}:
+    delete all cookies for {host}
 
 :cookie show {host}:
     show cookies for {host}
@@ -53,7 +56,7 @@ function getIterator(_enum, interface) {
 function cookieIterator() getIterator(CM.enumerator, Ci.nsICookie2);
 function cookiePermissionIterator() {
     for (let perm in getIterator(PM.enumerator, Ci.nsIPermission)) {
-        if (perm.type == PERM_TYPE)
+        if (perm.type === PERM_TYPE)
             yield perm;
     }
 }
@@ -117,23 +120,23 @@ commands.addUserCommand(["cookies"], "Cookie Management",
                 break;
             case "allow":
                 if (cManager.add(host, "ALLOW")) {
-                    liberator.echo("Allowed cookies for: '" + host + "'");
+                    liberator.echo("Allowed cookies for '" + host + "'");
                 } else {
-                    liberator.echo("Failed to allow cookies for: '" + host + "'");
+                    liberator.echo("Failed to allow cookies for '" + host + "'");
                 }
                 break;
             case "allow-session":
                 if (cManager.add(host, "ONLY_SESSION")) {
-                    liberator.echo("Allowed session cookies for: '" + host + "'");
+                    liberator.echo("Allowed session cookies for '" + host + "'");
                 } else {
-                    liberator.echo("Failed to allow session cookies for: '" + host + "'");
+                    liberator.echo("Failed to allow session cookies for '" + host + "'");
                 }
                 break;
             case "deny":
                 if (cManager.add(host, "DENY")) {
-                    liberator.echo("Denied cookies for: '" + host + "'");
+                    liberator.echo("Denied cookies for '" + host + "'");
                 } else {
-                    liberator.echo("Failed to deny cookies for: '" + host + "'");
+                    liberator.echo("Failed to deny cookies for '" + host + "'");
                 }
                 break;
             case "show":
@@ -145,12 +148,27 @@ commands.addUserCommand(["cookies"], "Cookie Management",
                 liberator.echo(xml, true);
                 break;
             case "delete":
-                cManager.remove(host);
-                liberator.echo("Deleted cookies for: '" + host + "'");
+                if (args.length !== 3) {
+                    liberator.echo("Invalid number of arguments.");
+                    return;
+                }
+                var name = args[2];
+                if(cManager.remove(host, name)) {
+                    liberator.echo("Deleted cookie '" + name + "' for '" + host + "'");
+                } else {
+                    liberator.echo("No cookie '" + name + "' for '" + host + "'");
+                }
+                break;
+            case "delete-all":
+                if(cManager.removeAll(host)) {
+                    liberator.echo("Deleted cookies for '" + host + "'");
+                } else {
+                    liberator.echo("Failed to delete cookies for '" + host + "'");
+                }
                 break;
             case "clear-permissions":
                 cManager.clearPermissions(host);
-                liberator.echo("Cleared permissions for: '" + host + "'");
+                liberator.echo("Cleared permissions for '" + host + "'");
                 break;
             default:
                 liberator.echoerr("Invalid command.");
@@ -164,7 +182,8 @@ commands.addUserCommand(["cookies"], "Cookie Management",
 var cManager = {
     subcommands: [
         ["show", "show cookies"],
-        ["delete", "delete cookies"],
+        ["delete", "delete a cookie"],
+        ["delete-all", "delete all cookies for host"],
         ["allow", "allow setting cookies for host"],
         ["allow-session", "allow setting session cookies for host"],
         ["deny", "deny setting cookies for host"],
@@ -174,7 +193,7 @@ var cManager = {
     add: function(hostname, capability) {
         var uri = util.newURI("http://" + hostname);
 
-        if (typeof capability == "string") {
+        if (typeof capability === "string") {
             capability = stringToCapability(capability);
         } else {
             return false;
@@ -200,7 +219,18 @@ var cManager = {
         return [[p.host, capabilityToString(p.capability)]
             for (p in cookiePermissionIterator())].filter(function($_) filterReg.test($_[0]));
     },
-    remove: function(hostAndPath) {
+    remove: function(hostAndPath, cookieName) {
+        if (!hostAndPath) return false;
+        var ret = false;
+        for (let cookie in this.getByHostAndPath(hostAndPath)) {
+            if (cookie.name === cookieName) {
+                CM.remove(cookie.host, cookie.name, cookie.path, false);
+                ret = true;
+            }
+        }
+        return ret;
+    },
+    removeAll: function(hostAndPath) {
         if (!hostAndPath) return false;
         for (let cookie in this.getByHostAndPath(hostAndPath)) {
             CM.remove(cookie.host, cookie.name, cookie.path, false);
@@ -209,7 +239,7 @@ var cManager = {
     },
     getByHostAndPath: function(hostAndPath) {
         for (let cookie in cookieIterator()) {
-            if (!hostAndPath || (cookie.rawHost + cookie.path).indexOf(hostAndPath) == 0)
+            if (!hostAndPath || (cookie.rawHost + cookie.path).indexOf(hostAndPath) === 0)
                 yield cookie;
         }
     },
@@ -227,7 +257,7 @@ var cManager = {
     },
     getByHost: function(hostname) {
         for (let permission in cookiePermissionIterator()) {
-            if (permission.host == hostname)
+            if (permission.host === hostname)
                 return permission;
         }
         return null;
@@ -238,14 +268,15 @@ var cManager = {
         ["ONLY_SESSION", "-"]
     ],
     completer: function(context, args) {
-        if (args.length == 1) {
+        if (args.length === 1) {
             context.title = ["Command", "Description"];
             context.completions = context.filter ?
                 this.subcommands.filter(function(c) c[0].indexOf(context.filter) >= 0) :
                 this.subcommands;
         } else {
             let suggestion = [];
-            if (args.length == 2) {
+            let command = args[0];
+            if (args.length === 2) {
                 let host = getHost();
                 if (host) {
                     let hosts = [];
@@ -260,6 +291,17 @@ var cManager = {
                         suggestion.filter(function($_) $_[0].indexOf(context.filter) >= 0) : suggestion;
                     return;
                 }
+            } else if (args.length === 3 && command === "delete") {
+                let host = args[1];
+                let cookies = [];
+                for (let cookie in this.getByHostAndPath(host)) {
+                    cookies.push([cookie.name, cookie.value]);
+                }
+
+                context.title = ["Cookies for " + host];
+                context.completions = context.filter ?
+                    cookies.filter(function(c) c[0].indexOf(context.filter) >= 0) : cookies;
+                return;
             }
         }
     },

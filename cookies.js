@@ -1,13 +1,14 @@
-var PLUGIN_INFO = xml`
-<VimperatorPlugin>
-<name>{NAME}</name>
-<description>Manage cookies (delete, show, allow, deny, list permissions)</description>
-<author mail="dkasak.protected@termina.org.uk">dkasak</author>
-<version>1.0</version>
+/* Forked from teramako's cookieManager.js (https://raw.githubusercontent.com/vimpr/vimperator-plugins/master/cookieManager.js) */
+var INFO = xml`
+<plugin name="cookies" version="1.0"
+        href="https://github.com/dkasak/vimperator-plugins/raw/master/cookie.js"
+        summary="Manage cookies (list, show, remove, allow, deny)"
+        lang="en_US"
+        xmlns="http://vimperator.org/namespaces/liberator">
+<author mail="teramako@gmail.com" homepage="http://vimperator.g.hatena.ne.jp/teramako/">teramako</author>
+<author mail="reversed(ku.gro.animret@kasakd)">dkasak</author>
+<project name="Vimperator" minVersion="3.6"/>
 <license>MPL 1.1/GPL 2.0/LGPL 2.1</license>
-<minVersion>2.0pre</minVersion>
-<maxVersion>2.0</maxVersion>
-<updateURL>https://github.com/dkasak/vimperator-plugins/raw/master/cookie.js</updateURL>
 <detail lang="en"><![CDATA[
 
 === Cookie manager ===

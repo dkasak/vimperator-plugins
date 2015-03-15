@@ -1,7 +1,7 @@
 var PLUGIN_INFO = xml`
 <VimperatorPlugin>
 <name>{NAME}</name>
-<description>Manage cookies (list, show, remove, allow, deny)</description>
+<description>Manage cookies (delete, show, allow, deny, list permissions)</description>
 <author mail="dkasak.protected@termina.org.uk">dkasak</author>
 <version>1.0</version>
 <license>MPL 1.1/GPL 2.0/LGPL 2.1</license>
@@ -12,23 +12,23 @@ var PLUGIN_INFO = xml`
 
 === Cookie manager ===
 
-:cookie remove {host}:
-    remove cookies for host
+:cookie delete {host}:
+    delete cookies for host
 
 :cookie show {host}:
     show cookies for {host}
-
-:cookie permissions {host}:
-    list cookie permissions for {host}
-
-:cookie clear {host}:
-    clear cookie permissions for {host}
 
 :cookie deny {host}:
     deny cookies for {host}
 
 :cookie allow {host}:
     allow all cookies for {host}
+
+:cookie permissions {host}:
+    list cookie permissions for {host}
+
+:cookie clear-permissions {host}:
+    clear cookie permissions for {host}
 
 :cookie allow-session {host}:
     allow session cookies for {host}
@@ -144,12 +144,12 @@ commands.addUserCommand(["cookies"], "Cookie Management",
                 }
                 liberator.echo(xml, true);
                 break;
-            case "remove":
+            case "delete":
                 cManager.remove(host);
-                liberator.echo("Removed cookies for: '" + host + "'");
+                liberator.echo("Deleted cookies for: '" + host + "'");
                 break;
-            case "clear":
-                cManager.clear(host);
+            case "clear-permissions":
+                cManager.clearPermissions(host);
                 liberator.echo("Cleared permissions for: '" + host + "'");
                 break;
             default:
@@ -164,12 +164,12 @@ commands.addUserCommand(["cookies"], "Cookie Management",
 var cManager = {
     subcommands: [
         ["show", "show cookies"],
-        ["remove", "remove cookies"],
+        ["delete", "delete cookies"],
         ["allow", "allow setting cookies for host"],
         ["allow-session", "allow setting session cookies for host"],
         ["deny", "deny setting cookies for host"],
-        ["clear", "clear permissions for host"],
         ["permissions", "list cookie permissions"],
+        ["clear-permissions", "clear permissions for host"],
     ],
     add: function(hostname, capability) {
         var uri = util.newURI("http://" + hostname);
@@ -184,7 +184,7 @@ var cManager = {
         PM.add(uri, PERM_TYPE, capability);
         return true;
     },
-    clear: function(hostname) {
+    clearPermissions: function(hostname) {
         if (this.getByHost(hostname)) {
             PM.remove(hostname, PERM_TYPE);
             return true;

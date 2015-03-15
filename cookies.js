@@ -166,6 +166,7 @@ var cManager = {
         ["show", "show cookies"],
         ["remove", "remove cookies"],
         ["allow", "allow setting cookies for host"],
+        ["allow-session", "allow setting session cookies for host"],
         ["deny", "deny setting cookies for host"],
         ["clear", "clear permissions for host"],
         ["permissions", "list cookie permissions"],
